@@ -1,0 +1,39 @@
+name: Mirror IPTV Upstream (仅保留.github，其余全同步上游｜UTC每3小时)
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync upstream, keep .github
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          cp -r .github /tmp/.github_bak
+
+          git remote add upstream https://github.com/kakaxi-1/zubo.git
+          git fetch upstream
+
+          git checkout main
+          git reset --hard upstream/main
+
+          rm -rf .github
+          cp -r /tmp/.github_bak .github
+          git add .github
+
+          git clean -fd
+
+          git commit -m "sync upstream: $(date +'%Y-%m-%d %H:%M:%S') | keep .github" || echo "Nothing changed, skip commit"
+          git push origin main --force
